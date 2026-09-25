@@ -1,0 +1,18 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "5dive-laya",
+  "description": "The 5dive Laya plugin, published from its own repository: a local model as the provider behind `5dive reflex`.",
+  "owner": {
+    "name": "5dive",
+    "email": "support@5dive.com"
+  },
+  "plugins": [
+    {
+      "name": "laya",
+      "description": "Run Laya, a small local typed-decision model, as the provider for `5dive reflex`, so reflex decides on your own box with no API key. One loopback-only service per host. Needs Starter Plus (8 GB) or larger.",
+      "category": "provider",
+      "source": "./laya",
+      "homepage": "https://github.com/5dive-ai/5dive-laya"
+    }
+  ]
+}

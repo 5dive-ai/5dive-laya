@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# `5dive laya`: lifecycle for the local Laya provider behind `5dive reflex`
+# (DIVE-4965).
+#
+# 5dive finds this file by convention (<installed-plugin-dir>/bin/laya, plugin
+# contract §2.1). Every subcommand here is host lifecycle: set up, check,
+# read logs, take out. None of them makes a decision. Decisions are asked
+# through `5dive reflex`, which sends them to whatever `reflex-endpoint` names.
+# This plugin sets that endpoint to a Laya on 127.0.0.1 and adds nothing
+# above it (lodar's proposal: "Laya is invisible above the provider boundary").
+#
+# `plugin add` never runs publisher code (contract §6), so installing the
+# plugin puts only this verb on the box. The host half runs when the owner
+# types `sudo 5dive laya setup`, which is the line `plugin add` prints and the
+# one `5dive plugin setup laya` runs.
+set -uo pipefail
+
+self_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+lib="$self_dir/../lib/laya-host.sh"
+[[ -r "$lib" ]] || { printf '5dive laya: this plugin is incomplete (no %s). Reinstall it: sudo 5dive plugin upgrade laya\n' "$lib" >&2; exit 1; }
+# shellcheck source=../lib/laya-host.sh
+. "$lib"
+
+usage() {
+  cat <<USAGE
+5dive laya: a local Laya model as the provider for 5dive reflex
+
+  5dive laya [status] [--json]        is it installed, loopback-only, healthy, and is reflex using it?
+  sudo 5dive laya setup               install Laya $LAYA_VERSION, start $LAYA_UNIT_NAME, point reflex at it
+  5dive laya health                   GET $(laya_health_url)
+  5dive laya logs [journalctl args]   the service's journal
+  sudo 5dive laya uninstall           reflex back to its default endpoint, service and files gone,
+                                      then the plugin itself (--keep-plugin to keep it)
+
+WHAT IT CHANGES
+  One shared service per host, bound to $LAYA_BIND_HOST:$LAYA_BIND_PORT only, with no checkpoint
+  preloaded ($LAYA_CHECKPOINT loads on the first decision). Setup then runs:
+    5dive config reflex-endpoint=$(laya_endpoint_url) reflex-model=$LAYA_CHECKPOINT
+  Reflex decisions are made on this box with no API key. The call works exactly as
+  before. Only the provider behind it changes.
+
+HARDWARE
+  Starter Plus (8 GB RAM) or larger. On Starter (4 GB), keep reflex on its remote
+  provider: setup refuses a host under 7 GiB.
+USAGE
+}
+
+case "${1:-status}" in
+  -h|--help|help) usage ;;
+  status)    shift || true; laya_status "$@" ;;
+  --json)    laya_status --json ;;
+  setup)     shift; laya_setup "$@" ;;
+  uninstall) shift; laya_uninstall "$@" ;;
+  health)    laya_health ;;
+  logs)      shift; laya_logs "$@" ;;
+  *)         printf 'unknown: 5dive laya %s (see: 5dive laya --help)\n' "$1" >&2; exit 64 ;;
+esac
