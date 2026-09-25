@@ -1,0 +1,25 @@
+name: tests
+
+# DIVE-4965. The harness runs the real bin/laya against a throwaway root with
+# stub systemctl/ss/curl/5dive/pip. No root, torch or network is needed. The
+# negative controls then break one load-bearing line at a time (the loopback
+# bind, preload off, the fail-closed bind check, the endpoint reset) and
+# require the suite to go red on exactly the arms that guard it.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  laya:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck
+        run: shellcheck -S warning laya/bin/laya laya/lib/laya-host.sh tests/*.sh
+      - name: manifests are valid JSON
+        run: jq -e . laya/.claude-plugin/plugin.json .claude-plugin/marketplace.json >/dev/null
+      - name: harness
+        run: bash tests/laya.test.sh
+      - name: negative controls
+        run: bash tests/negative-controls.sh
